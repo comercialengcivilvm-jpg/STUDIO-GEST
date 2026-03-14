@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin – Agenda Pilates Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --pink:#d4789e;--pink-light:#fce8f3;--pink-dark:#b85c82;
+  --teal:#5ba4a4;--teal-dark:#3d7a7a;--teal-light:#e0f5f5;
+  --green:#2da88a;--green-light:#e0f7f2;
+  --red:#e05555;--red-light:#ffeeee;
+  --warn:#f59e0b;--warn-light:#fffbeb;
+  --lav:#9b7fd4;--lav-light:#ede8fc;
+  --bg:#f8f4fb;--white:#fff;--gray:#8a8a9a;--text:#3a3a4a;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ── LAYOUT ── */
+.admin-wrap{display:flex;min-height:100vh;}
+.sidebar{width:240px;background:linear-gradient(180deg,#3d7a7a 0%,#2a5858 100%);color:white;padding:28px 0;display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;}
+.sidebar-logo{padding:0 24px 24px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:20px;}
+.sidebar-logo h1{font-family:'Playfair Display',serif;font-style:italic;font-size:1.2rem;color:white;}
+.sidebar-logo span{font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.5);}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 24px;cursor:pointer;font-size:.84rem;color:rgba(255,255,255,.7);transition:all .2s;border-left:3px solid transparent;}
+.nav-item:hover{background:rgba(255,255,255,.08);color:white;}
+.nav-item.active{background:rgba(255,255,255,.12);color:white;border-left-color:var(--pink);}
+.nav-item .ico{font-size:1rem;width:20px;text-align:center;}
+.sidebar-logout{margin-top:auto;padding:0 24px 0;}
+.sidebar-logout button{width:100%;padding:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:rgba(255,255,255,.7);font-family:'DM Sans',sans-serif;font-size:.8rem;cursor:pointer;}
+.main{flex:1;padding:32px;overflow-y:auto;max-width:1100px;}
+
+/* ── HEADER ── */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;}
+.page-title{font-family:'Playfair Display',serif;font-style:italic;font-size:1.5rem;color:var(--teal-dark);}
+.page-sub{font-size:.75rem;color:var(--gray);margin-top:2px;}
+
+/* ── CARDS STATS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:28px;}
+.stat-card{background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);border-top:4px solid var(--pink);}
+.stat-card.teal{border-top-color:var(--teal);}
+.stat-card.green{border-top-color:var(--green);}
+.stat-card.warn{border-top-color:var(--warn);}
+.stat-num{font-size:2rem;font-weight:700;color:var(--text);}
+.stat-lbl{font-size:.72rem;color:var(--gray);letter-spacing:1px;text-transform:uppercase;margin-top:4px;}
+
+/* ── TABELA ESTÚDIOS ── */
+.section-title{font-size:.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--gray);margin-bottom:14px;}
+.studios-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:28px;}
+.studio-card{background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);cursor:pointer;transition:all .2s;border:2px solid transparent;}
+.studio-card:hover{border-color:var(--pink-light);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.1);}
+.studio-card-top{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.studio-avatar-lg{width:52px;height:52px;border-radius:12px;object-fit:cover;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:white;}
+.studio-card-name{font-weight:700;font-size:1rem;color:var(--text);}
+.studio-card-email{font-size:.72rem;color:var(--gray);margin-top:2px;}
+.studio-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.s-mini{background:var(--bg);border-radius:8px;padding:8px;text-align:center;}
+.s-mini-num{font-size:1.1rem;font-weight:700;color:var(--teal-dark);}
+.s-mini-lbl{font-size:.58rem;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;}
+.studio-footer{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid #f5f0f8;}
+.last-access{font-size:.68rem;color:var(--gray);}
+.last-access span{color:var(--teal-dark);font-weight:600;}
+.btn-view-studio{padding:6px 14px;background:var(--teal-light);border:none;border-radius:20px;color:var(--teal-dark);font-size:.72rem;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;}
+.status-active{background:var(--green);}
+.status-inactive{background:#ddd;}
+
+/* ── FORM NOVO ESTÚDIO ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(40,20,40,.5);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:white;border-radius:20px;padding:32px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
+.modal-title{font-family:'Playfair Display',serif;font-style:italic;font-size:1.2rem;color:var(--teal-dark);margin-bottom:4px;}
+.modal-sub{font-size:.75rem;color:var(--gray);margin-bottom:24px;}
+.field-lbl{font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--gray);margin-bottom:5px;display:block;}
+.field{width:100%;padding:11px 14px;border:1.5px solid rgba(212,120,158,.25);border-radius:10px;font-size:.9rem;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--bg);outline:none;margin-bottom:16px;}
+.field:focus{border-color:var(--teal);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.btn-save{width:100%;padding:14px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));border:none;border-radius:12px;color:white;font-size:.92rem;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;margin-top:4px;}
+.btn-cancel{padding:12px 20px;border:1.5px solid #eee;border-radius:12px;background:none;cursor:pointer;color:#666;font-family:'DM Sans',sans-serif;font-size:.88rem;}
+.color-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.color-opt{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .2s;}
+.color-opt.sel{border-color:#333;transform:scale(1.2);}
+.logo-upload-area{border:2px dashed rgba(212,120,158,.3);border-radius:12px;padding:24px;text-align:center;cursor:pointer;margin-bottom:16px;background:var(--pink-light);transition:all .2s;}
+.logo-upload-area:hover{border-color:var(--pink);}
+.logo-preview{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--pink-light);margin:0 auto 8px;display:none;}
+.logo-upload-txt{font-size:.8rem;color:var(--pink);font-weight:600;}
+.logo-upload-sub{font-size:.68rem;color:var(--gray);margin-top:4px;}
+
+/* ── VIEWER ESTÚDIO ── */
+.studio-viewer{background:white;border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,.06);}
+.studio-viewer-header{display:flex;align-items:center;gap:16px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #f0eaf5;}
+.back-btn{background:none;border:1px solid #eee;border-radius:10px;padding:8px 14px;cursor:pointer;font-size:.8rem;font-family:'DM Sans',sans-serif;color:var(--gray);}
+
+/* ── LOGIN ── */
+#adminLoginScreen{position:fixed;inset:0;background:linear-gradient(160deg,#fce8f3,#e0f5f5);display:flex;align-items:center;justify-content:center;z-index:200;}
+.login-box{background:white;border-radius:20px;padding:36px 32px;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.1);}
+.login-title{font-family:'Playfair Display',serif;font-style:italic;font-size:1.4rem;color:var(--teal-dark);margin-bottom:4px;}
+.login-sub{font-size:.72rem;color:var(--gray);margin-bottom:24px;}
+.login-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));border:none;border-radius:12px;color:white;font-size:.92rem;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;}
+.login-error{color:var(--red);font-size:.78rem;margin-top:10px;display:none;}
+.badge{display:inline-block;font-size:.6rem;padding:2px 8px;border-radius:10px;font-weight:700;}
+.badge-red{background:var(--red-light);color:var(--red);}
+.badge-warn{background:var(--warn-light);color:var(--warn);}
+.badge-green{background:var(--green-light);color:var(--green);}
+#loadingAdmin{position:fixed;inset:0;background:linear-gradient(160deg,#fce8f3,#e0f5f5);z-index:300;display:flex;align-items:center;justify-content:center;}
+.spinner{width:40px;height:40px;border:3px solid rgba(212,120,158,.2);border-top-color:var(--pink);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingAdmin">
+  <div class="spinner"></div>
+</div>
+
+<!-- LOGIN ADMIN -->
+<div id="adminLoginScreen" style="display:none">
+  <div class="login-box">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:2.5rem">🛡️</div>
+    </div>
+    <div class="login-title">Admin</div>
+    <div class="login-sub">Painel de administração — Agenda Pilates Pro</div>
+    <label class="field-lbl">E-mail admin</label>
+    <input class="field" id="adminEmail" type="email" placeholder="admin@agendapilates.com">
+    <label class="field-lbl">Senha</label>
+    <input class="field" id="adminPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter') adminLogin()">
+    <button class="login-btn" onclick="adminLogin()">Entrar como Admin</button>
+    <div class="login-error" id="adminLoginError"></div>
+  </div>
+</div>
+
+<!-- APP ADMIN -->
+<div id="adminApp" style="display:none">
+<div class="admin-wrap">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <h1>Agenda Pro</h1>
+      <span>Painel Admin</span>
+    </div>
+    <div class="nav-item active" id="navDash" onclick="showSection('dashboard')"><span class="ico">📊</span> Dashboard</div>
+    <div class="nav-item" id="navStudios" onclick="showSection('studios')"><span class="ico">🏢</span> Estúdios</div>
+    <div class="nav-item" id="navNew" onclick="openNewStudio()"><span class="ico">➕</span> Novo Estúdio</div>
+    <div class="nav-item" id="navReport" onclick="showSection('report')"><span class="ico">📈</span> Relatório Geral</div>
+    <div class="sidebar-logout">
+      <button onclick="adminLogout()">🚪 Sair</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div id="sectionDashboard">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub" id="dashLastUpdate">Visão geral de todos os estúdios</div>
+        </div>
+        <button onclick="refreshAll()" id="refreshBtn" style="padding:10px 18px;background:var(--teal-light);border:none;border-radius:12px;color:var(--teal-dark);font-size:.84rem;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px;">🔄 Atualizar</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-num" id="dTotalStudios">—</div><div class="stat-lbl">Estúdios ativos</div></div>
+        <div class="stat-card teal"><div class="stat-num" id="dTotalAlunos">—</div><div class="stat-lbl">Total de alunos</div></div>
+        <div class="stat-card green"><div class="stat-num" id="dTotalFat">—</div><div class="stat-lbl">Faturamento (todos)</div></div>
+        <div class="stat-card warn"><div class="stat-num" id="dAtivos7d">—</div><div class="stat-lbl">Ativos últimos 7 dias</div></div>
+      </div>
+      <div class="section-title">Estúdios cadastrados</div>
+      <div id="dashStudiosList"></div>
+    </div>
+
+    <!-- ESTÚDIOS -->
+    <div id="sectionStudios" style="display:none">
+      <div class="page-header">
+        <div><div class="page-title">Estúdios</div><div class="page-sub">Gerencie todos os estúdios cadastrados</div></div>
+        <div style="display:flex;gap:8px">
+          <button onclick="refreshAll()" style="padding:10px 18px;background:var(--teal-light);border:none;border-radius:12px;color:var(--teal-dark);font-size:.84rem;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">🔄 Atualizar</button>
+          <button onclick="openNewStudio()" style="padding:10px 20px;background:linear-gradient(135deg,var(--teal),var(--teal-dark));border:none;border-radius:12px;color:white;font-size:.84rem;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">+ Novo Estúdio</button>
+        </div>
+      </div>
+      <div class="studios-grid" id="studiosGrid"></div>
+    </div>
+
+    <!-- RELATÓRIO GERAL -->
+    <div id="sectionReport" style="display:none">
+      <div class="page-header">
+        <div><div class="page-title">Relatório Geral</div><div class="page-sub">Consolidado de todos os estúdios</div></div>
+      </div>
+      <div id="reportContent"></div>
+    </div>
+
+    <!-- VIEWER ESTÚDIO -->
+    <div id="sectionViewer" style="display:none">
+      <div class="page-header">
+        <div style="display:flex;align-items:center;gap:14px">
+          <button class="back-btn" onclick="showSection('studios')">← Voltar</button>
+          <div>
+            <div class="page-title" id="viewerStudioName">—</div>
+            <div class="page-sub" id="viewerStudioEmail">—</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="currentViewStudio && viewStudio(currentViewStudio.id)" style="padding:10px 18px;background:var(--teal-light);border:none;border-radius:12px;color:var(--teal-dark);font-size:.84rem;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">🔄 Atualizar</button>
+          <button id="viewerEditBtn" onclick="openEditStudio()" style="padding:10px 20px;background:var(--pink-light);border:none;border-radius:12px;color:var(--pink-dark);font-size:.84rem;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">✏️ Editar</button>
+          <button onclick="confirmDeleteStudio()" style="padding:10px 20px;background:var(--red-light);border:none;border-radius:12px;color:var(--red);font-size:.84rem;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;">🗑 Excluir</button>
+        </div>
+      </div>
+      <div class="stats-grid" id="viewerStats"></div>
+      <div class="section-title" style="margin-top:8px">Dados do estúdio</div>
+      <div id="viewerData"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- MODAL: NOVO / EDITAR ESTÚDIO -->
+<div class="modal-overlay" id="studioModal">
+<div class="modal-box">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+    <div class="modal-title" id="modalTitle">Novo Estúdio</div>
+    <button onclick="closeStudioModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#aaa">✕</button>
+  </div>
+  <div class="modal-sub" id="modalSub">Cadastre um novo estúdio cliente</div>
+
+  <!-- LOGO -->
+  <label class="field-lbl">Logo do estúdio</label>
+  <div class="logo-upload-area" id="logoUploadArea" onclick="document.getElementById('logoInput').click()">
+    <img id="logoPreview" class="logo-preview">
+    <div class="logo-upload-txt" id="logoUploadTxt">📷 Clique para fazer upload do logo</div>
+    <div class="logo-upload-sub">PNG ou JPG — recomendado 200×200px</div>
+  </div>
+  <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
+
+  <div class="row2">
+    <div>
+      <label class="field-lbl">Nome do estúdio *</label>
+      <input class="field" id="sName" type="text" placeholder="Ex: Studio Ana Lima">
+    </div>
+    <div>
+      <label class="field-lbl">Especialidade</label>
+      <input class="field" id="sSpecialty" type="text" placeholder="Ex: Pilates e Fisioterapia">
+    </div>
+  </div>
+
+  <div class="row2">
+    <div>
+      <label class="field-lbl" id="sEmailLbl">E-mail de acesso *</label>
+      <input class="field" id="sEmail" type="email" placeholder="contato@studio.com">
+      <div id="sEmailHint" style="font-size:.65rem;color:var(--gray);margin-top:-12px;margin-bottom:10px;display:none">⚠️ Trocar e-mail recria o acesso</div>
+    </div>
+    <div>
+      <label class="field-lbl" id="sPassLbl">Senha de acesso *</label>
+      <input class="field" id="sPass" type="password" placeholder="Mínimo 6 caracteres">
+    </div>
+  </div>
+
+  <div class="row2">
+    <div>
+      <label class="field-lbl">Nome do responsável</label>
+      <input class="field" id="sOwner" type="text" placeholder="Nome da profissional">
+    </div>
+    <div>
+      <label class="field-lbl">WhatsApp</label>
+      <input class="field" id="sPhone" type="tel" placeholder="(11) 99999-9999">
+    </div>
+  </div>
+
+  <label class="field-lbl">Cor principal do app</label>
+  <div class="color-row" id="colorRow">
+    <div class="color-opt sel" style="background:#d4789e" data-color="#d4789e" onclick="pickAdminColor(this)"></div>
+    <div class="color-opt" style="background:#5ba4a4" data-color="#5ba4a4" onclick="pickAdminColor(this)"></div>
+    <div class="color-opt" style="background:#9b7fd4" data-color="#9b7fd4" onclick="pickAdminColor(this)"></div>
+    <div class="color-opt" style="background:#e8973a" data-color="#e8973a" onclick="pickAdminColor(this)"></div>
+    <div class="color-opt" style="background:#2da88a" data-color="#2da88a" onclick="pickAdminColor(this)"></div>
+    <div class="color-opt" style="background:#e05555" data-color="#e05555" onclick="pickAdminColor(this)"></div>
+  </div>
+
+  <div id="modalError" style="background:var(--red-light);color:var(--red);border-radius:10px;padding:10px 14px;font-size:.8rem;margin-bottom:14px;display:none;"></div>
+
+  <div style="display:flex;gap:10px">
+    <button class="btn-cancel" onclick="closeStudioModal()">Cancelar</button>
+    <button class="btn-save" id="modalSaveBtn" onclick="saveStudio()">Criar Estúdio</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL CONFIRMAR EXCLUSÃO -->
+<div class="modal-overlay" id="deleteModal">
+<div class="modal-box" style="max-width:380px">
+  <div class="modal-title" style="color:var(--red)">⚠️ Excluir estúdio?</div>
+  <div class="modal-sub" id="deleteModalSub"></div>
+  <div style="background:var(--red-light);border-radius:10px;padding:12px 14px;font-size:.82rem;color:var(--red);margin-bottom:20px">
+    Todos os dados deste estúdio serão removidos permanentemente. Esta ação não pode ser desfeita.
+  </div>
+  <div style="display:flex;gap:10px">
+    <button class="btn-cancel" onclick="document.getElementById('deleteModal').classList.remove('open')">Cancelar</button>
+    <button style="flex:1;padding:14px;background:var(--red);border:none;border-radius:12px;color:white;font-size:.9rem;font-family:'DM Sans',sans-serif;cursor:pointer;font-weight:600;" onclick="doDeleteStudio()">Sim, excluir</button>
+  </div>
+</div>
+</div>
+
+<!-- TOAST -->
+<div id="adminToast" style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--teal-dark);color:white;padding:10px 22px;border-radius:20px;font-size:.82rem;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:500;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;"></div>
+
+<script>
+/* ══════════════════════════════
+   SUPABASE CONFIG
+   ⚠️ Substitua pelos seus valores!
+══════════════════════════════ */
+const SUPABASE_URL = 'https://faejwlikcbuvcdfhuawz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhZWp3bGlrY2J1dmNkZmh1YXd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MjQyMjAsImV4cCI6MjA4OTAwMDIyMH0.1vJwbFAWD_uAVIUprwmq8S8E0nWqgfPfnfv59EbazZU';
+const ADMIN_EMAIL = 'vitorsilverio840@gmail.com'; // E-mail do administrador
+
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let adminUser = null;
+let allStudios = [];
+let editingStudioId = null;
+let currentViewStudio = null;
+let logoDataUrl = null;
+let selectedColor = '#d4789e';
+
+/* ══════════════════════════════
+   BOOT
+══════════════════════════════ */
+window.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await _supabase.auth.getSession();
+
+  if (session && session.user.email === ADMIN_EMAIL) {
+    adminUser = session.user;
+    await initAdmin();
+  } else {
+    showAdminLogin();
+  }
+});
+
+function showAdminLogin() {
+  document.getElementById('loadingAdmin').style.display = 'none';
+  document.getElementById('adminLoginScreen').style.display = 'flex';
+}
+
+async function adminLogin() {
+  const email = document.getElementById('adminEmail').value.trim();
+  const pass  = document.getElementById('adminPass').value;
+  const errEl = document.getElementById('adminLoginError');
+  errEl.style.display = 'none';
+
+  if (email !== ADMIN_EMAIL) {
+    errEl.textContent = 'Acesso restrito ao administrador.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const { data, error } = await _supabase.auth.signInWithPassword({ email, password: pass });
+  if (error) {
+    errEl.textContent = 'E-mail ou senha incorretos.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  adminUser = data.user;
+  document.getElementById('adminLoginScreen').style.display = 'none';
+  await initAdmin();
+}
+
+async function adminLogout() {
+  await _supabase.auth.signOut();
+  adminUser = null;
+  document.getElementById('adminApp').style.display = 'none';
+  showAdminLogin();
+}
+
+/* ══════════════════════════════
+   INIT
+══════════════════════════════ */
+async function initAdmin() {
+  document.getElementById('loadingAdmin').style.display = 'none';
+  document.getElementById('adminApp').style.display = 'block';
+  await loadAllStudios();
+  renderDashboard();
+  startRealtimeSync();
+}
+
+/* ══════════════════════════════
+   ATUALIZAÇÃO EM TEMPO REAL
+   Escuta mudanças na tabela studio_data
+══════════════════════════════ */
+function startRealtimeSync() {
+  _supabase
+    .channel('studio_data_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_data' }, async (payload) => {
+      // Um estúdio atualizou os dados — recarregar aquele estúdio
+      const studioId = payload.new?.studio_id || payload.old?.studio_id;
+      if (!studioId) return;
+
+      // Atualizar só o estúdio que mudou (sem recarregar tudo)
+      const { data: sd } = await _supabase
+        .from('studio_data')
+        .select('payload, updated_at')
+        .eq('studio_id', studioId)
+        .maybeSingle();
+
+      const idx = allStudios.findIndex(s => s.id === studioId);
+      if (idx !== -1) {
+        allStudios[idx].studio_data = sd ? [sd] : [];
+      }
+
+      // Re-renderizar a seção ativa silenciosamente
+      const activeSection = document.querySelector('[id^="section"]:not([style*="none"])');
+      if (activeSection?.id === 'sectionDashboard') renderDashboard();
+      else if (activeSection?.id === 'sectionStudios') renderStudiosGrid();
+      else if (activeSection?.id === 'sectionReport') renderReport();
+
+      // Atualizar indicador de última sync
+      updateSyncIndicator();
+    })
+    .subscribe();
+}
+
+function updateSyncIndicator() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  const el = document.getElementById('dashLastUpdate');
+  if (el) el.textContent = `Última atualização: ${h}:${m}:${s}`;
+}
+
+async function refreshAll() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.textContent = '⏳ Atualizando...'; btn.disabled = true; }
+  await loadAllStudios();
+  renderDashboard();
+  renderStudiosGrid();
+  updateSyncIndicator();
+  if (btn) { btn.textContent = '🔄 Atualizar'; btn.disabled = false; }
+  adminToast('✓ Dados atualizados!');
+}
+
+async function loadAllStudios() {
+  const { data, error } = await _supabase
+    .from('studios')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (!error && data) {
+    for (const studio of data) {
+      const { data: sd } = await _supabase
+        .from('studio_data')
+        .select('payload, updated_at')
+        .eq('studio_id', studio.id)
+        .maybeSingle();
+      studio.studio_data = sd ? [sd] : [];
+    }
+    allStudios = data;
+  }
+}
+
+/* ══════════════════════════════
+   NAVEGAÇÃO
+══════════════════════════════ */
+function showSection(s) {
+  ['dashboard','studios','report','viewer'].forEach(x => {
+    document.getElementById('section'+cap(x)).style.display = x === s ? 'block' : 'none';
+  });
+  ['Dash','Studios','Report'].forEach(x => {
+    document.getElementById('nav'+x)?.classList.toggle('active', x.toLowerCase() === s.replace('report','report').replace('dashboard','dash').replace('studios','studios'));
+  });
+  if (s === 'studios') renderStudiosGrid();
+  if (s === 'report')  renderReport();
+  if (s === 'dashboard') renderDashboard();
+}
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+/* ══════════════════════════════
+   DASHBOARD
+══════════════════════════════ */
+function renderDashboard() {
+  const now = new Date();
+  const days7ago = new Date(now - 7 * 864e5).toISOString();
+
+  document.getElementById('dTotalStudios').textContent = allStudios.length;
+
+  let totalAlunos = 0, totalFat = 0, ativos7d = 0;
+  allStudios.forEach(s => {
+    const d = getStudioData(s);
+    totalAlunos += (d.alunos || []).length;
+    totalFat += (d.histPag || []).reduce((sum, p) => sum + Number(p.valor || 0), 0);
+    if (s.last_access && s.last_access >= days7ago) ativos7d++;
+  });
+
+  document.getElementById('dTotalAlunos').textContent = totalAlunos;
+  document.getElementById('dTotalFat').textContent = 'R$' + totalFat.toFixed(0);
+  document.getElementById('dAtivos7d').textContent = ativos7d;
+
+  document.getElementById('dashStudiosList').innerHTML = allStudios.map(s => studioCardHtml(s, true)).join('') ||
+    '<p style="color:var(--gray);font-style:italic">Nenhum estúdio cadastrado ainda.</p>';
+}
+
+/* ══════════════════════════════
+   GRID DE ESTÚDIOS
+══════════════════════════════ */
+function renderStudiosGrid() {
+  document.getElementById('studiosGrid').innerHTML = allStudios.map(s => studioCardHtml(s, false)).join('') ||
+    '<p style="color:var(--gray);font-style:italic">Nenhum estúdio cadastrado ainda.</p>';
+}
+
+function studioCardHtml(s, compact) {
+  const d = getStudioData(s);
+  const nAlunos = (d.alunos || []).length;
+  const nAulas  = (d.appts || []).length;
+  const fat     = (d.histPag || []).reduce((sum, p) => sum + Number(p.valor || 0), 0);
+  const lastAcc = s.last_access ? new Date(s.last_access) : null;
+  const lastStr = lastAcc ? lastAcc.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Nunca';
+  const isRecent = lastAcc && (new Date() - lastAcc) < 7 * 864e5;
+
+  const avatarContent = s.logo_url
+    ? `<img src="${s.logo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`
+    : `<span>${(s.name||'?').charAt(0).toUpperCase()}</span>`;
+
+  return `<div class="studio-card" onclick="viewStudio('${s.id}')">
+    <div class="studio-card-top">
+      <div class="studio-avatar-lg" style="background:${s.primary_color || '#d4789e'}">${avatarContent}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="studio-card-name">${s.name}</div>
+          <span class="status-dot ${isRecent ? 'status-active' : 'status-inactive'}"></span>
+        </div>
+        <div class="studio-card-email">${s.owner || ''} · ${s.specialty || 'Pilates'}</div>
+      </div>
+    </div>
+    <div class="studio-stats">
+      <div class="s-mini"><div class="s-mini-num">${nAlunos}</div><div class="s-mini-lbl">Alunos</div></div>
+      <div class="s-mini"><div class="s-mini-num">${nAulas}</div><div class="s-mini-lbl">Aulas</div></div>
+      <div class="s-mini"><div class="s-mini-num" style="color:var(--green)">R$${fat.toFixed(0)}</div><div class="s-mini-lbl">Faturado</div></div>
+    </div>
+    <div class="studio-footer">
+      <div class="last-access">Último acesso: <span>${lastStr}</span></div>
+      <button class="btn-view-studio" onclick="event.stopPropagation();viewStudio('${s.id}')">Ver dados →</button>
+    </div>
+  </div>`;
+}
+
+/* ══════════════════════════════
+   VIEWER DE ESTÚDIO
+══════════════════════════════ */
+async function viewStudio(id) {
+  const s = allStudios.find(x => x.id === id);
+  if (!s) return;
+
+  // Buscar dados frescos do Supabase antes de exibir
+  const { data: sd } = await _supabase
+    .from('studio_data')
+    .select('payload, updated_at')
+    .eq('studio_id', id)
+    .maybeSingle();
+  s.studio_data = sd ? [sd] : [];
+
+  currentViewStudio = s;
+  document.getElementById('viewerStudioName').textContent = s.name;
+  document.getElementById('viewerStudioEmail').textContent = s.owner || '' + ' · ' + (s.specialty || '');
+  document.getElementById('viewerEditBtn').dataset.id = id;
+
+  const d = getStudioData(s);
+  const nAlunos = (d.alunos || []).length;
+  const nAulas  = (d.appts  || []).length;
+  const nFaltas = (d.faltas || []).length;
+  const fat     = (d.histPag || []).reduce((sum, p) => sum + Number(p.valor || 0), 0);
+
+  document.getElementById('viewerStats').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${nAlunos}</div><div class="stat-lbl">Alunos</div></div>
+    <div class="stat-card teal"><div class="stat-num">${nAulas}</div><div class="stat-lbl">Aulas agendadas</div></div>
+    <div class="stat-card warn"><div class="stat-num">${nFaltas}</div><div class="stat-lbl">Faltas</div></div>
+    <div class="stat-card green"><div class="stat-num">R$${fat.toFixed(2)}</div><div class="stat-lbl">Faturamento total</div></div>`;
+
+  // Lista de alunos
+  const alunoRows = (d.alunos || []).map(a =>
+    `<tr><td style="padding:8px 0;font-size:.84rem;font-weight:500">${a.nome}</td>
+     <td style="font-size:.78rem;color:var(--gray)">${a.modalidade||''}</td>
+     <td style="font-size:.78rem;color:var(--gray)">${a.plano||''}</td>
+     <td style="font-size:.78rem">${a.proxVenc ? new Date(a.proxVenc+'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td></tr>`
+  ).join('');
+
+  document.getElementById('viewerData').innerHTML = `
+    <div style="background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:16px">
+      <div class="section-title">Informações do estúdio</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><div style="font-size:.65rem;color:var(--gray);text-transform:uppercase;letter-spacing:1px">Responsável</div><div style="font-size:.9rem;font-weight:600;margin-top:2px">${s.owner||'—'}</div></div>
+        <div><div style="font-size:.65rem;color:var(--gray);text-transform:uppercase;letter-spacing:1px">WhatsApp</div><div style="font-size:.9rem;font-weight:600;margin-top:2px">${s.phone||'—'}</div></div>
+        <div><div style="font-size:.65rem;color:var(--gray);text-transform:uppercase;letter-spacing:1px">Especialidade</div><div style="font-size:.9rem;font-weight:600;margin-top:2px">${s.specialty||'—'}</div></div>
+        <div><div style="font-size:.65rem;color:var(--gray);text-transform:uppercase;letter-spacing:1px">Cadastrado em</div><div style="font-size:.9rem;font-weight:600;margin-top:2px">${s.created_at ? new Date(s.created_at).toLocaleDateString('pt-BR') : '—'}</div></div>
+      </div>
+    </div>
+    <div style="background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06)">
+      <div class="section-title">Alunos (${nAlunos})</div>
+      ${nAlunos > 0 ? `<table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:2px solid #f0eaf5">
+          <th style="text-align:left;font-size:.6rem;letter-spacing:2px;color:var(--gray);padding-bottom:8px;text-transform:uppercase">Nome</th>
+          <th style="text-align:left;font-size:.6rem;letter-spacing:2px;color:var(--gray);padding-bottom:8px;text-transform:uppercase">Modalidade</th>
+          <th style="text-align:left;font-size:.6rem;letter-spacing:2px;color:var(--gray);padding-bottom:8px;text-transform:uppercase">Plano</th>
+          <th style="text-align:left;font-size:.6rem;letter-spacing:2px;color:var(--gray);padding-bottom:8px;text-transform:uppercase">Vencimento</th>
+        </tr></thead>
+        <tbody>${alunoRows}</tbody>
+      </table>` : '<p style="color:var(--gray);font-style:italic;font-size:.84rem">Nenhum aluno cadastrado ainda.</p>'}
+    </div>`;
+
+  showSection('viewer');
+}
+
+
+
+/* ══════════════════════════════
+   NOVO ESTÚDIO
+══════════════════════════════ */
+function openNewStudio() {
+  editingStudioId = null;
+  document.getElementById('modalTitle').textContent = 'Novo Estúdio';
+  document.getElementById('modalSub').textContent = 'Cadastre um novo estúdio cliente';
+  document.getElementById('modalSaveBtn').textContent = 'Criar Estúdio';
+  document.getElementById('sName').value = '';
+  document.getElementById('sSpecialty').value = '';
+  document.getElementById('sEmail').value = '';
+  document.getElementById('sEmail').disabled = false;
+  document.getElementById('sPass').value = '';
+  document.getElementById('sPassLbl').textContent = 'Senha de acesso *';
+  document.getElementById('sOwner').value = '';
+  document.getElementById('sPhone').value = '';
+  logoDataUrl = null;
+  document.getElementById('logoPreview').style.display = 'none';
+  document.getElementById('logoUploadTxt').textContent = '📷 Clique para fazer upload do logo';
+  document.getElementById('modalError').style.display = 'none';
+  selectedColor = '#d4789e';
+  document.querySelectorAll('.color-opt').forEach(el => el.classList.toggle('sel', el.dataset.color === '#d4789e'));
+  document.getElementById('studioModal').classList.add('open');
+}
+
+function closeStudioModal() {
+  document.getElementById('studioModal').classList.remove('open');
+  editingStudioId = null;
+  document.getElementById('sEmail').disabled = false;
+}
+
+function pickAdminColor(el) {
+  document.querySelectorAll('.color-opt').forEach(x => x.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedColor = el.dataset.color;
+}
+
+function handleLogoUpload(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    logoDataUrl = e.target.result;
+    document.getElementById('logoPreview').src = logoDataUrl;
+    document.getElementById('logoPreview').style.display = 'block';
+    document.getElementById('logoUploadTxt').textContent = '✓ Logo carregado — clique para trocar';
+  };
+  reader.readAsDataURL(file);
+  evt.target.value = '';
+}
+
+async function saveStudio() {
+  const name      = document.getElementById('sName').value.trim();
+  const email     = document.getElementById('sEmail').value.trim();
+  const pass      = document.getElementById('sPass').value;
+  const specialty = document.getElementById('sSpecialty').value.trim();
+  const owner     = document.getElementById('sOwner').value.trim();
+  const phone     = document.getElementById('sPhone').value.trim();
+  const errEl     = document.getElementById('modalError');
+  errEl.style.display = 'none';
+
+  if (!name) { errEl.textContent='⚠️ Nome do estúdio é obrigatório.'; errEl.style.display='block'; return; }
+
+  const btn = document.getElementById('modalSaveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  try {
+    if (editingStudioId) {
+      // EDITAR estúdio existente
+      const updates = { name, specialty, owner, phone, primary_color: selectedColor };
+      if (logoDataUrl) updates.logo_url = logoDataUrl;
+      if (pass && pass.length >= 6) {
+        // Para alterar senha, precisa chamar a API de admin do Supabase
+        // Isso requer service role key — instrução no DEPLOY.md
+        adminToast('⚠️ Troca de senha requer chave de serviço — veja o DEPLOY.md');
+      }
+      const { error } = await _supabase.from('studios').update(updates).eq('id', editingStudioId);
+      if (error) throw error;
+      adminToast('✓ Estúdio atualizado!');
+    } else {
+      // CRIAR novo estúdio
+      if (!email) { errEl.textContent='⚠️ E-mail é obrigatório.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Criar Estúdio'; return; }
+      if (!pass || pass.length < 6) { errEl.textContent='⚠️ Senha deve ter pelo menos 6 caracteres.'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Criar Estúdio'; return; }
+
+      // 1. Criar usuário no Auth
+      const { data: authData, error: authErr } = await _supabase.auth.admin.createUser({
+        email, password: pass, email_confirm: true
+      });
+
+      // Nota: auth.admin.createUser requer service_role key.
+      // Com anon key, use signUp + confirmação manual.
+      // Veja o DEPLOY.md para configurar corretamente.
+
+      if (authErr) {
+        // Fallback: signUp normal
+        const { data: signData, error: signErr } = await _supabase.auth.signUp({ email, password: pass });
+        if (signErr) throw signErr;
+        const userId = signData.user?.id;
+        if (!userId) throw new Error('Usuário não criado');
+
+        await _supabase.from('studios').insert({
+          user_id: userId, name, specialty, owner, phone,
+          primary_color: selectedColor,
+          logo_url: logoDataUrl || null,
+          first_login: true,
+          created_at: new Date().toISOString()
+        });
+      } else {
+        const userId = authData.user?.id;
+        await _supabase.from('studios').insert({
+          user_id: userId, name, specialty, owner, phone,
+          primary_color: selectedColor,
+          logo_url: logoDataUrl || null,
+          first_login: true,
+          created_at: new Date().toISOString()
+        });
+      }
+      adminToast('✓ Estúdio criado! E-mail de confirmação enviado.');
+    }
+
+    await loadAllStudios();
+    closeStudioModal();
+    renderDashboard();
+    renderStudiosGrid();
+  } catch(e) {
+    errEl.textContent = '⚠️ Erro: ' + (e.message || 'Tente novamente.');
+    errEl.style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.textContent = editingStudioId ? 'Salvar alterações' : 'Criar Estúdio';
+}
+
+/* ══════════════════════════════
+   RELATÓRIO GERAL
+══════════════════════════════ */
+function renderReport() {
+  let html = '';
+  let grandFat = 0;
+
+  const rows = allStudios.map(s => {
+    const d = getStudioData(s);
+    const fat = (d.histPag||[]).reduce((sum,p) => sum+Number(p.valor||0), 0);
+    grandFat += fat;
+    const nAlunos = (d.alunos||[]).length;
+    const vencidos = (d.alunos||[]).filter(a => a.proxVenc && ((new Date(a.proxVenc+'T00:00:00') - new Date()) / 864e5) < 0).length;
+    const badge = vencidos > 0 ? `<span class="badge badge-warn">${vencidos} vencidos</span>` : '<span class="badge badge-green">OK</span>';
+    const lastAcc = s.last_access ? new Date(s.last_access).toLocaleDateString('pt-BR') : '—';
+    return `<tr style="border-bottom:1px solid #f5f0f8">
+      <td style="padding:12px 0;font-weight:600">${s.name}</td>
+      <td style="font-size:.8rem;color:var(--gray)">${s.owner||'—'}</td>
+      <td style="font-size:.88rem;font-weight:700;color:var(--teal-dark)">${nAlunos}</td>
+      <td style="font-size:.88rem;font-weight:700;color:var(--green)">R$${fat.toFixed(2)}</td>
+      <td>${badge}</td>
+      <td style="font-size:.78rem;color:var(--gray)">${lastAcc}</td>
+      <td><button onclick="viewStudio('${s.id}')" class="btn-view-studio">Ver →</button></td>
+    </tr>`;
+  }).join('');
+
+  html = `
+  <div style="background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:20px">
+    <div style="font-size:1rem;font-weight:600;margin-bottom:4px">💰 Faturamento consolidado</div>
+    <div style="font-size:2rem;font-weight:700;color:var(--green)">R$ ${grandFat.toFixed(2)}</div>
+    <div style="font-size:.72rem;color:var(--gray)">Total de todos os estúdios</div>
+  </div>
+  <div style="background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;min-width:600px">
+      <thead><tr style="border-bottom:2px solid #f0eaf5">
+        <th style="text-align:left;font-size:.6rem;letter-spacing:2px;color:var(--gray);padding-bottom:10px;text-transform:uppercase">Estúdio</th>
+        <th style="text-align:left;font-size:.6rem;letter-spacing:2px;color:var(--gray);padding-bottom:10px;text-transform:uppercase">Responsável</th>
+        <th style="text-align:left;font-size:.6rem;letter-spacing:2px;color:var(--gray);padding-bottom:10px;text-transform:uppercase">Alunos</th>
+        <th style="text-align:left;font-size:.6rem;letter-spacing:2px;color:var(--gray);padding-bottom:10px;text-transform:uppercase">Faturado</th>
+        <th style="text-align:left;font-size:.6rem;letter-spacing:2px;color:var(--gray);padding-bottom:10px;text-transform:uppercase">Status</th>
+        <th style="text-align:left;font-size:.6rem;letter-spacing:2px;color:var(--gray);padding-bottom:10px;text-transform:uppercase">Último acesso</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="7" style="text-align:center;color:var(--gray);padding:20px;font-style:italic">Nenhum estúdio cadastrado</td></tr>'}</tbody>
+    </table>
+  </div>`;
+
+  document.getElementById('reportContent').innerHTML = html;
+}
+
+/* ══════════════════════════════
+   HELPERS
+══════════════════════════════ */
+function getStudioData(studio) {
+  // Dados do Supabase (studio_data) têm prioridade
+  if (studio.studio_data && studio.studio_data.length) {
+    return studio.studio_data[0].payload || {};
+  }
+  return {};
+}
+
+/* ══════════════════════════════
+   EXCLUIR ESTÚDIO
+══════════════════════════════ */
+function confirmDeleteStudio() {
+  if (!currentViewStudio) return;
+  document.getElementById('deleteModalSub').textContent = 'Você está prestes a excluir: ' + currentViewStudio.name;
+  document.getElementById('deleteModal').classList.add('open');
+}
+
+async function doDeleteStudio() {
+  if (!currentViewStudio) return;
+  document.getElementById('deleteModal').classList.remove('open');
+  
+  try {
+    // Deletar dados do estúdio
+    await _supabase.from('studio_data').delete().eq('studio_id', currentViewStudio.id);
+    // Deletar estúdio
+    await _supabase.from('studios').delete().eq('id', currentViewStudio.id);
+    
+    adminToast('✓ Estúdio excluído!');
+    currentViewStudio = null;
+    await loadAllStudios();
+    renderDashboard();
+    showSection('studios');
+  } catch(e) {
+    adminToast('⚠️ Erro ao excluir: ' + e.message);
+  }
+}
+
+/* ══════════════════════════════
+   TROCAR EMAIL — mostrar hint ao editar
+══════════════════════════════ */
+function openEditStudio() {
+  if (!currentViewStudio) return;
+  editingStudioId = currentViewStudio.id;
+  const s = currentViewStudio;
+  document.getElementById('modalTitle').textContent = 'Editar Estúdio';
+  document.getElementById('modalSub').textContent = s.name;
+  document.getElementById('modalSaveBtn').textContent = 'Salvar alterações';
+  document.getElementById('sName').value = s.name || '';
+  document.getElementById('sSpecialty').value = s.specialty || '';
+  document.getElementById('sEmailLbl').textContent = 'Novo e-mail (deixe em branco para manter)';
+  document.getElementById('sEmail').value = '';
+  document.getElementById('sEmail').disabled = false;
+  document.getElementById('sEmailHint').style.display = 'block';
+  document.getElementById('sPass').value = '';
+  document.getElementById('sPassLbl').textContent = 'Nova senha (deixe em branco para manter)';
+  document.getElementById('sOwner').value = s.owner || '';
+  document.getElementById('sPhone').value = s.phone || '';
+  logoDataUrl = null;
+  if (s.logo_url) {
+    document.getElementById('logoPreview').src = s.logo_url;
+    document.getElementById('logoPreview').style.display = 'block';
+    document.getElementById('logoUploadTxt').textContent = '✓ Logo carregado — clique para trocar';
+  } else {
+    document.getElementById('logoPreview').style.display = 'none';
+    document.getElementById('logoUploadTxt').textContent = '📷 Clique para fazer upload do logo';
+  }
+  selectedColor = s.primary_color || '#d4789e';
+  document.querySelectorAll('.color-opt').forEach(el => el.classList.toggle('sel', el.dataset.color === selectedColor));
+  document.getElementById('modalError').style.display = 'none';
+  document.getElementById('studioModal').classList.add('open');
+}
+
+let _toastT = null;
+function adminToast(msg) {
+  const t = document.getElementById('adminToast');
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => t.style.opacity = '0', 3000);
+}
+</script>
+</body>
+</html>
